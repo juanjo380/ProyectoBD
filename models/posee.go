@@ -1,17 +1,15 @@
 package models
 
 type Posee struct {
-    IDPosee     int
-    IDProductoT int
-    IDPedido    string
-    Cantidad    int
+	IDPosee     int
+	IDProductoT int
+	IDPedido    string
 }
 
-func NewPosee(id, idProd int, idPed string, cant int) *Posee {
-    return &Posee{
-        IDPosee:     id,
-        IDProductoT: idProd,
-        IDPedido:    idPed,
-        Cantidad:    cant,
-    }
+func NewPosee(id, idProd int, idPed string) *Posee {
+	return &Posee{
+		IDPosee:     id,
+		IDProductoT: idProd,
+		IDPedido:    idPed,
+	}
 }

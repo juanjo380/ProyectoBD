@@ -20,7 +20,7 @@ func Connect() (*sql.DB, error) {
 		user = "postgres"
 	}
 	if password == "" {
-		password = "trabajos380"
+		password = "2978"
 	}
 
 	connStr := fmt.Sprintf(
