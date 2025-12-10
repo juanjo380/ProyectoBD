@@ -7,104 +7,103 @@ import (
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 )
 
-func BuildClientesUI(w fyne.Window) fyne.CanvasObject {
+func BuildClienteUI(w fyne.Window) fyne.CanvasObject {
 
     clientes, _ := controllers.GetAllClientes()
 
     data := [][]string{{"Documento", "Nombre", "Teléfono"}}
     for _, c := range clientes {
         data = append(data, []string{
-            c.DocID, c.Nombre, c.Telefono,
+            c.DocID,
+            c.Nombre,
+            c.Telefono,
         })
     }
 
-    // Tabla
     table := widget.NewTable(
         func() (int, int) { return len(data), 3 },
         func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(id widget.TableCellID, cell fyne.CanvasObject) {
-            cell.(*widget.Label).SetText(data[id.Row][id.Col])
+        func(cell widget.TableCellID, obj fyne.CanvasObject) {
+            obj.(*widget.Label).SetText(data[cell.Row][cell.Col])
         },
     )
 
-    // Botón añadir cliente
-    addBtn := widget.NewButton("Agregar Cliente", func() {
+    btnAdd := widget.NewButton("Registrar Cliente", func() {
         w.SetContent(BuildCrearClienteUI(w))
     })
 
-    // Botón eliminar (abre popup)
-    deleteBtn := widget.NewButton("Eliminar Cliente", func() {
-        showEliminarClienteDialog(w)
+    btnEdit := widget.NewButton("Editar Cliente", func() {
+        openClienteEditDialog(w)
     })
 
-    menu := container.NewVBox(addBtn, deleteBtn)
+    btnDelete := widget.NewButton("Eliminar Cliente", func() {
+        openClienteDeleteDialog(w)
+    })
 
-    return container.NewBorder(
-        menu, nil, nil, nil,
-        table,
-    )
+    menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
+
+    return container.NewBorder(menu, nil, nil, nil, table)
 }
 
 func BuildCrearClienteUI(w fyne.Window) fyne.CanvasObject {
 
     doc := widget.NewEntry()
     nombre := widget.NewEntry()
-    telefono := widget.NewEntry()
+    tel := widget.NewEntry()
 
     form := &widget.Form{
         Items: []*widget.FormItem{
             {Text: "Documento", Widget: doc},
             {Text: "Nombre", Widget: nombre},
-            {Text: "Teléfono", Widget: telefono},
+            {Text: "Teléfono", Widget: tel},
         },
         OnSubmit: func() {
             c := models.Cliente{
                 DocID:    doc.Text,
                 Nombre:   nombre.Text,
-                Telefono: telefono.Text,
+                Telefono: tel.Text,
             }
 
             controllers.InsertCliente(c)
-
-            // Vuelve a la lista de clientes
-            w.SetContent(BuildClientesUI(w))
+            w.SetContent(BuildClienteUI(w))
         },
         OnCancel: func() {
-            w.SetContent(BuildClientesUI(w))
+            w.SetContent(BuildClienteUI(w))
         },
     }
 
-    return container.NewVBox(
-        widget.NewLabel("Registrar Cliente"),
-        form,
-    )
+    return container.NewVBox(widget.NewLabel("Registrar Cliente"), form)
 }
 
-func BuildEditarClienteDialog(w fyne.Window) {
+func openClienteEditDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("Ingrese el documento del cliente a editar:"),
-            id,
-            widget.NewButton("Continuar", func() {
-                cliente, err := controllers.GetClienteByID(id.Text)
-                if err != nil {
-                    id.SetText("No existe.")
-                    return
-                }
-                w.SetContent(BuildEditarClienteUI(w, cliente))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Editar Cliente",
+        "Buscar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "Documento del cliente", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            cliente, err := controllers.GetClienteByID(id.Text)
+            if err != nil {
+                dialog.ShowInformation("Error", "Cliente no existe", w)
+                return
+            }
+
+            w.SetContent(BuildEditarClienteUI(w, cliente))
+        },
+        w,
+    )
 }
 
 func BuildEditarClienteUI(w fyne.Window, c *models.Cliente) fyne.CanvasObject {
@@ -112,23 +111,23 @@ func BuildEditarClienteUI(w fyne.Window, c *models.Cliente) fyne.CanvasObject {
     nombre := widget.NewEntry()
     nombre.SetText(c.Nombre)
 
-    telefono := widget.NewEntry()
-    telefono.SetText(c.Telefono)
+    tel := widget.NewEntry()
+    tel.SetText(c.Telefono)
 
     form := &widget.Form{
         Items: []*widget.FormItem{
             {Text: "Nombre", Widget: nombre},
-            {Text: "Teléfono", Widget: telefono},
+            {Text: "Teléfono", Widget: tel},
         },
         OnSubmit: func() {
             c.Nombre = nombre.Text
-            c.Telefono = telefono.Text
+            c.Telefono = tel.Text
 
             controllers.UpdateCliente(*c)
-            w.SetContent(BuildClientesUI(w))
+            w.SetContent(BuildClienteUI(w))
         },
         OnCancel: func() {
-            w.SetContent(BuildClientesUI(w))
+            w.SetContent(BuildClienteUI(w))
         },
     }
 
@@ -138,22 +137,23 @@ func BuildEditarClienteUI(w fyne.Window, c *models.Cliente) fyne.CanvasObject {
     )
 }
 
-func BuildEliminarClienteDialog(w fyne.Window) {
+func openClienteDeleteDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("Documento del cliente a eliminar:"),
-            id,
-            widget.NewButton("Eliminar", func() {
-                controllers.DeleteCliente(id.Text)
-                w.SetContent(BuildClientesUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Eliminar Cliente",
+        "Eliminar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "Documento del cliente", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            controllers.DeleteCliente(id.Text)
+            w.SetContent(BuildClienteUI(w))
+        },
+        w)
 }
