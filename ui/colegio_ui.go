@@ -8,38 +8,42 @@ import (
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 )
 
-func BuildColegiosUI(w fyne.Window) fyne.CanvasObject {
+func BuildColegioUI(w fyne.Window) fyne.CanvasObject {
 
     colegios, _ := controllers.GetAllColegios()
 
     data := [][]string{{"ID", "Nombre", "Teléfono", "Dirección"}}
     for _, c := range colegios {
         data = append(data, []string{
-            fmt.Sprint(c.IDColegio), c.Nombre, c.Telefono, c.Direccion,
+            fmt.Sprintf("%d", c.IDColegio),
+            c.Nombre,
+            c.Telefono,
+            c.Direccion,
         })
     }
 
     table := widget.NewTable(
         func() (int, int) { return len(data), 4 },
         func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(id widget.TableCellID, cell fyne.CanvasObject) {
-            cell.(*widget.Label).SetText(data[id.Row][id.Col])
+        func(cell widget.TableCellID, obj fyne.CanvasObject) {
+            obj.(*widget.Label).SetText(data[cell.Row][cell.Col])
         },
     )
 
     btnAdd := widget.NewButton("Registrar Colegio", func() {
-        w.SetContent(BuildCrearColegioUI(w))
+        openCrearColegioDialog(w)
     })
 
     btnEdit := widget.NewButton("Editar Colegio", func() {
-        BuildEditarColegioDialog(w)
+        openEditarColegioIDDialog(w)
     })
 
     btnDelete := widget.NewButton("Eliminar Colegio", func() {
-        BuildEliminarColegioDialog(w)
+        openEliminarColegioDialog(w)
     })
 
     menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
@@ -47,73 +51,70 @@ func BuildColegiosUI(w fyne.Window) fyne.CanvasObject {
     return container.NewBorder(menu, nil, nil, nil, table)
 }
 
-func BuildCrearColegioUI(w fyne.Window) fyne.CanvasObject {
+func openCrearColegioDialog(w fyne.Window) {
 
     id := widget.NewEntry()
     nombre := widget.NewEntry()
     tel := widget.NewEntry()
     dir := widget.NewEntry()
 
-    form := &widget.Form{
-        Items: []*widget.FormItem{
-            {Text: "ID Colegio", Widget: id},
+    dialog.ShowForm("Registrar Colegio",
+        "Guardar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID", Widget: id},
             {Text: "Nombre", Widget: nombre},
             {Text: "Teléfono", Widget: tel},
             {Text: "Dirección", Widget: dir},
         },
-        OnSubmit: func() {
-            idInt, _ := strconv.Atoi(id.Text)
+        func(ok bool) {
+            if !ok {
+                return
+            }
+
+            idVal, _ := strconv.Atoi(id.Text)
 
             c := models.Colegio{
-                IDColegio: idInt,
+                IDColegio: idVal,
                 Nombre:    nombre.Text,
                 Telefono:  tel.Text,
                 Direccion: dir.Text,
             }
 
             controllers.InsertColegio(c)
-            w.SetContent(BuildColegiosUI(w))
+            w.SetContent(BuildColegioUI(w))
         },
-        OnCancel: func() {
-            w.SetContent(BuildColegiosUI(w))
-        },
-    }
-
-    return container.NewVBox(
-        widget.NewLabel("Registrar Colegio"),
-        form,
+        w,
     )
 }
 
-func BuildEditarColegioDialog(w fyne.Window) {
+func openEditarColegioIDDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID del colegio a editar:"),
-            id,
-            widget.NewButton("Continuar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err != nil {
-                    id.SetText("ID inválido")
-                    return
-                }
+    dialog.ShowForm("Editar Colegio",
+        "Buscar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID del colegio", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-                colegio, err := controllers.GetColegioByID(idInt)
-                if err != nil {
-                    id.SetText("No existe")
-                    return
-                }
+            idVal, _ := strconv.Atoi(id.Text)
 
-                w.SetContent(BuildEditarColegioUI(w, colegio))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
+            colegio, err := controllers.GetColegioByID(idVal)
+            if err != nil {
+                dialog.ShowInformation("Error", "No existe un colegio con ese ID", w)
+                return
+            }
+
+            w.SetContent(BuildEditarColegioUI(w, colegio))
+        },
+        w,
     )
-
-    popup.Show()
 }
 
 func BuildEditarColegioUI(w fyne.Window, c *models.Colegio) fyne.CanvasObject {
@@ -134,43 +135,46 @@ func BuildEditarColegioUI(w fyne.Window, c *models.Colegio) fyne.CanvasObject {
             {Text: "Dirección", Widget: dir},
         },
         OnSubmit: func() {
+
             c.Nombre = nombre.Text
             c.Telefono = tel.Text
             c.Direccion = dir.Text
 
             controllers.UpdateColegio(*c)
-            w.SetContent(BuildColegiosUI(w))
+            w.SetContent(BuildColegioUI(w))
         },
         OnCancel: func() {
-            w.SetContent(BuildColegiosUI(w))
+            w.SetContent(BuildColegioUI(w))
         },
     }
 
     return container.NewVBox(
-        widget.NewLabel(fmt.Sprintf("Editando Colegio: %d", c.IDColegio)),
+        widget.NewLabel(fmt.Sprintf("Editando Colegio ID: %d", c.IDColegio)),
         form,
     )
 }
 
-func BuildEliminarColegioDialog(w fyne.Window) {
+func openEliminarColegioDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID del colegio a eliminar:"),
-            id,
-            widget.NewButton("Eliminar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err == nil {
-                    controllers.DeleteColegio(idInt)
-                }
-                w.SetContent(BuildColegiosUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Eliminar Colegio",
+        "Eliminar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID del colegio", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            idVal, _ := strconv.Atoi(id.Text)
+
+            controllers.DeleteColegio(idVal)
+            w.SetContent(BuildColegioUI(w))
+        },
+        w,
+    )
 }
+

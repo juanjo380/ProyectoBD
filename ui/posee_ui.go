@@ -8,41 +8,42 @@ import (
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 )
 
 func BuildPoseeUI(w fyne.Window) fyne.CanvasObject {
 
-    posee, _ := controllers.GetAllPosee()
+    poseeList, _ := controllers.GetAllPosee()
 
-    data := [][]string{{"ID", "Producto T", "ID Pedido", "Cantidad"}}
-    for _, p := range posee {
+    data := [][]string{{"ID Posee", "ID Producto T", "ID Pedido", "Cantidad"}}
+    for _, p := range poseeList {
         data = append(data, []string{
-            fmt.Sprint(p.IDPosee),
-            fmt.Sprint(p.IDProductoT),
+            fmt.Sprintf("%d", p.IDPosee),
+            fmt.Sprintf("%d", p.IDProductoT),
             p.IDPedido,
-            fmt.Sprint(p.Cantidad),
+            fmt.Sprintf("%d", p.Cantidad),
         })
     }
 
     table := widget.NewTable(
         func() (int, int) { return len(data), 4 },
         func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(id widget.TableCellID, cell fyne.CanvasObject) {
-            cell.(*widget.Label).SetText(data[id.Row][id.Col])
+        func(cell widget.TableCellID, obj fyne.CanvasObject) {
+            obj.(*widget.Label).SetText(data[cell.Row][cell.Col])
         },
     )
 
-    btnAdd := widget.NewButton("Registrar Relación (Posee)", func() {
-        w.SetContent(BuildCrearPoseeUI(w))
+    btnAdd := widget.NewButton("Registrar Relación Posee", func() {
+        openCrearPoseeDialog(w)
     })
 
-    btnEdit := widget.NewButton("Editar Relación", func() {
-        BuildEditarPoseeDialog(w)
+    btnEdit := widget.NewButton("Editar Relación Posee", func() {
+        openEditarPoseeIDDialog(w)
     })
 
-    btnDelete := widget.NewButton("Eliminar Relación", func() {
-        BuildEliminarPoseeDialog(w)
+    btnDelete := widget.NewButton("Eliminar Relación Posee", func() {
+        openEliminarPoseeDialog(w)
     })
 
     menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
@@ -50,101 +51,99 @@ func BuildPoseeUI(w fyne.Window) fyne.CanvasObject {
     return container.NewBorder(menu, nil, nil, nil, table)
 }
 
-func BuildCrearPoseeUI(w fyne.Window) fyne.CanvasObject {
+func openCrearPoseeDialog(w fyne.Window) {
 
-    id := widget.NewEntry()
+    idPosee := widget.NewEntry()
     idProd := widget.NewEntry()
     idPed := widget.NewEntry()
-    cantidad := widget.NewEntry()
+    cant := widget.NewEntry()
 
-    form := &widget.Form{
-        Items: []*widget.FormItem{
-            {Text: "ID Posee", Widget: id},
+    dialog.ShowForm("Registrar Posee",
+        "Guardar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID Posee", Widget: idPosee},
             {Text: "ID Producto Terminado", Widget: idProd},
             {Text: "ID Pedido", Widget: idPed},
-            {Text: "Cantidad", Widget: cantidad},
+            {Text: "Cantidad", Widget: cant},
         },
-        OnSubmit: func() {
-            idInt, _ := strconv.Atoi(id.Text)
-            prodInt, _ := strconv.Atoi(idProd.Text)
-            cantInt, _ := strconv.Atoi(cantidad.Text)
+        func(ok bool) {
+            if !ok {
+                return
+            }
+
+            idPoseeVal, _ := strconv.Atoi(idPosee.Text)
+            idProdVal, _ := strconv.Atoi(idProd.Text)
+            cantVal, _ := strconv.Atoi(cant.Text)
 
             p := models.Posee{
-                IDPosee:     idInt,
-                IDProductoT: prodInt,
+                IDPosee:     idPoseeVal,
+                IDProductoT: idProdVal,
                 IDPedido:    idPed.Text,
-                Cantidad:    cantInt,
+                Cantidad:    cantVal,
             }
 
             controllers.InsertPosee(p)
             w.SetContent(BuildPoseeUI(w))
         },
-        OnCancel: func() {
-            w.SetContent(BuildPoseeUI(w))
-        },
-    }
-
-    return container.NewVBox(
-        widget.NewLabel("Registrar Relación Posee"),
-        form,
+        w,
     )
 }
 
-func BuildEditarPoseeDialog(w fyne.Window) {
+func openEditarPoseeIDDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de la relación a editar:"),
-            id,
-            widget.NewButton("Continuar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err != nil {
-                    id.SetText("ID inválido")
-                    return
-                }
+    dialog.ShowForm("Editar Relación Posee",
+        "Buscar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID Posee", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-                p, err := controllers.GetPoseeByID(idInt)
-                if err != nil {
-                    id.SetText("No existe")
-                    return
-                }
+            idVal, _ := strconv.Atoi(id.Text)
 
-                w.SetContent(BuildEditarPoseeUI(w, p))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", popup.Hide),
-        ),
-        w.Canvas(),
+            posee, err := controllers.GetPoseeByID(idVal)
+            if err != nil {
+                dialog.ShowInformation("Error", "No existe registro con ese ID Posee", w)
+                return
+            }
+
+            w.SetContent(BuildEditarPoseeUI(w, posee))
+        },
+        w,
     )
-
-    popup.Show()
 }
 
 func BuildEditarPoseeUI(w fyne.Window, p *models.Posee) fyne.CanvasObject {
 
     idProd := widget.NewEntry()
-    idProd.SetText(fmt.Sprint(p.IDProductoT))
+    idProd.SetText(fmt.Sprintf("%d", p.IDProductoT))
 
     idPed := widget.NewEntry()
     idPed.SetText(p.IDPedido)
 
-    cantidad := widget.NewEntry()
-    cantidad.SetText(fmt.Sprint(p.Cantidad))
+    cant := widget.NewEntry()
+    cant.SetText(fmt.Sprintf("%d", p.Cantidad))
 
     form := &widget.Form{
         Items: []*widget.FormItem{
-            {Text: "ID Producto T", Widget: idProd},
+            {Text: "ID Producto Terminado", Widget: idProd},
             {Text: "ID Pedido", Widget: idPed},
-            {Text: "Cantidad", Widget: cantidad},
+            {Text: "Cantidad", Widget: cant},
         },
         OnSubmit: func() {
-            prodInt, _ := strconv.Atoi(idProd.Text)
-            cantInt, _ := strconv.Atoi(cantidad.Text)
 
-            p.IDProductoT = prodInt
+            prodVal, _ := strconv.Atoi(idProd.Text)
+            cantVal, _ := strconv.Atoi(cant.Text)
+
+            p.IDProductoT = prodVal
             p.IDPedido = idPed.Text
-            p.Cantidad = cantInt
+            p.Cantidad = cantVal
 
             controllers.UpdatePosee(*p)
             w.SetContent(BuildPoseeUI(w))
@@ -155,30 +154,31 @@ func BuildEditarPoseeUI(w fyne.Window, p *models.Posee) fyne.CanvasObject {
     }
 
     return container.NewVBox(
-        widget.NewLabel(fmt.Sprintf("Editando Relación Posee ID: %d", p.IDPosee)),
+        widget.NewLabel(fmt.Sprintf("Editando Posee ID: %d", p.IDPosee)),
         form,
     )
 }
 
-func BuildEliminarPoseeDialog(w fyne.Window) {
+func openEliminarPoseeDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de la relación a eliminar:"),
-            id,
-            widget.NewButton("Eliminar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err == nil {
-                    controllers.DeletePosee(idInt)
-                }
-                w.SetContent(BuildPoseeUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", popup.Hide),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Eliminar Relación Posee",
+        "Eliminar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID Posee", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            idVal, _ := strconv.Atoi(id.Text)
+
+            controllers.DeletePosee(idVal)
+            w.SetContent(BuildPoseeUI(w))
+        },
+        w,
+    )
 }

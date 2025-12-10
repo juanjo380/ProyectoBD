@@ -8,43 +8,44 @@ import (
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 )
 
-func BuildMateriasPrimasUI(w fyne.Window) fyne.CanvasObject {
+func BuildMateriaPrimaUI(w fyne.Window) fyne.CanvasObject {
 
     materias, _ := controllers.GetAllMateriasPrimas()
 
     data := [][]string{{"ID", "Tipo", "Descripción", "Cantidad", "Unidad", "Proveedor"}}
-    for _, mp := range materias {
+    for _, m := range materias {
         data = append(data, []string{
-            fmt.Sprint(mp.IDMateriaPrima),
-            mp.Tipo,
-            mp.Descripcion,
-            fmt.Sprint(mp.CantidadExist),
-            mp.UnidadMedida,
-            mp.NitProveedor,
+            fmt.Sprintf("%d", m.IDMateriaPrima),
+            m.Tipo,
+            m.Descripcion,
+            fmt.Sprintf("%d", m.CantidadExist),
+            m.UnidadMedida,
+            m.NitProveedor,
         })
     }
 
     table := widget.NewTable(
         func() (int, int) { return len(data), 6 },
         func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(id widget.TableCellID, cell fyne.CanvasObject) {
-            cell.(*widget.Label).SetText(data[id.Row][id.Col])
+        func(cell widget.TableCellID, obj fyne.CanvasObject) {
+            obj.(*widget.Label).SetText(data[cell.Row][cell.Col])
         },
     )
 
     btnAdd := widget.NewButton("Registrar Materia Prima", func() {
-        w.SetContent(BuildCrearMateriaPrimaUI(w))
+        openCrearMateriaPrimaDialog(w)
     })
 
     btnEdit := widget.NewButton("Editar Materia Prima", func() {
-        BuildEditarMateriaPrimaDialog(w)
+        openEditarMateriaPrimaIDDialog(w)
     })
 
     btnDelete := widget.NewButton("Eliminar Materia Prima", func() {
-        BuildEliminarMateriaPrimaDialog(w)
+        openEliminarMateriaPrimaDialog(w)
     })
 
     menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
@@ -52,7 +53,7 @@ func BuildMateriasPrimasUI(w fyne.Window) fyne.CanvasObject {
     return container.NewBorder(menu, nil, nil, nil, table)
 }
 
-func BuildCrearMateriaPrimaUI(w fyne.Window) fyne.CanvasObject {
+func openCrearMateriaPrimaDialog(w fyne.Window) {
 
     id := widget.NewEntry()
     tipo := widget.NewEntry()
@@ -61,140 +62,139 @@ func BuildCrearMateriaPrimaUI(w fyne.Window) fyne.CanvasObject {
     unidad := widget.NewEntry()
     nit := widget.NewEntry()
 
-    form := &widget.Form{
-        Items: []*widget.FormItem{
-            {Text: "ID Materia Prima", Widget: id},
+    dialog.ShowForm("Registrar Materia Prima",
+        "Guardar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID", Widget: id},
             {Text: "Tipo", Widget: tipo},
             {Text: "Descripción", Widget: desc},
-            {Text: "Cantidad Existente", Widget: cant},
-            {Text: "Unidad de Medida", Widget: unidad},
+            {Text: "Cantidad", Widget: cant},
+            {Text: "Unidad de medida", Widget: unidad},
             {Text: "NIT Proveedor", Widget: nit},
         },
-        OnSubmit: func() {
-            idInt, _ := strconv.Atoi(id.Text)
-            cantInt, _ := strconv.Atoi(cant.Text)
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-            mp := models.MateriaPrima{
-                IDMateriaPrima: idInt,
+            idVal, _ := strconv.Atoi(id.Text)
+            cantVal, _ := strconv.Atoi(cant.Text)
+
+            m := models.MateriaPrima{
+                IDMateriaPrima: idVal,
                 Tipo:           tipo.Text,
                 Descripcion:    desc.Text,
-                CantidadExist:  cantInt,
+                CantidadExist:  cantVal,
                 UnidadMedida:   unidad.Text,
                 NitProveedor:   nit.Text,
             }
 
-            controllers.InsertMateriaPrima(mp)
-            w.SetContent(BuildMateriasPrimasUI(w))
+            controllers.InsertMateriaPrima(m)
+            w.SetContent(BuildMateriaPrimaUI(w))
         },
-        OnCancel: func() {
-            w.SetContent(BuildMateriasPrimasUI(w))
-        },
-    }
-
-    return container.NewVBox(
-        widget.NewLabel("Registrar Materia Prima"),
-        form,
+        w,
     )
 }
 
-func BuildEditarMateriaPrimaDialog(w fyne.Window) {
+func openEditarMateriaPrimaIDDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de la materia prima a editar:"),
-            id,
-            widget.NewButton("Continuar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err != nil {
-                    id.SetText("ID inválido")
-                    return
-                }
+    dialog.ShowForm("Editar Materia Prima",
+        "Buscar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID de la materia prima", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-                mp, err := controllers.GetMateriaPrimaByID(idInt)
-                if err != nil {
-                    id.SetText("No existe")
-                    return
-                }
+            idVal, _ := strconv.Atoi(id.Text)
 
-                w.SetContent(BuildEditarMateriaPrimaUI(w, mp))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
+            materia, err := controllers.GetMateriaPrimaByID(idVal)
+            if err != nil {
+                dialog.ShowInformation("Error", "No existe materia prima con ese ID", w)
+                return
+            }
+
+            w.SetContent(BuildEditarMateriaPrimaUI(w, materia))
+        },
+        w,
     )
-
-    popup.Show()
 }
 
-func BuildEditarMateriaPrimaUI(w fyne.Window, mp *models.MateriaPrima) fyne.CanvasObject {
+func BuildEditarMateriaPrimaUI(w fyne.Window, m *models.MateriaPrima) fyne.CanvasObject {
 
     tipo := widget.NewEntry()
-    tipo.SetText(mp.Tipo)
+    tipo.SetText(m.Tipo)
 
     desc := widget.NewEntry()
-    desc.SetText(mp.Descripcion)
+    desc.SetText(m.Descripcion)
 
     cant := widget.NewEntry()
-    cant.SetText(fmt.Sprint(mp.CantidadExist))
+    cant.SetText(fmt.Sprintf("%d", m.CantidadExist))
 
     unidad := widget.NewEntry()
-    unidad.SetText(mp.UnidadMedida)
+    unidad.SetText(m.UnidadMedida)
 
     nit := widget.NewEntry()
-    nit.SetText(mp.NitProveedor)
+    nit.SetText(m.NitProveedor)
 
     form := &widget.Form{
         Items: []*widget.FormItem{
             {Text: "Tipo", Widget: tipo},
             {Text: "Descripción", Widget: desc},
-            {Text: "Cantidad", Widget: cant},
-            {Text: "Unidad", Widget: unidad},
+            {Text: "Cantidad exist.", Widget: cant},
+            {Text: "Unidad de medida", Widget: unidad},
             {Text: "NIT Proveedor", Widget: nit},
         },
         OnSubmit: func() {
-            cantInt, _ := strconv.Atoi(cant.Text)
 
-            mp.Tipo = tipo.Text
-            mp.Descripcion = desc.Text
-            mp.CantidadExist = cantInt
-            mp.UnidadMedida = unidad.Text
-            mp.NitProveedor = nit.Text
+            cantVal, _ := strconv.Atoi(cant.Text)
 
-            controllers.UpdateMateriaPrima(*mp)
-            w.SetContent(BuildMateriasPrimasUI(w))
+            m.Tipo = tipo.Text
+            m.Descripcion = desc.Text
+            m.CantidadExist = cantVal
+            m.UnidadMedida = unidad.Text
+            m.NitProveedor = nit.Text
+
+            controllers.UpdateMateriaPrima(*m)
+            w.SetContent(BuildMateriaPrimaUI(w))
         },
         OnCancel: func() {
-            w.SetContent(BuildMateriasPrimasUI(w))
+            w.SetContent(BuildMateriaPrimaUI(w))
         },
     }
 
     return container.NewVBox(
-        widget.NewLabel(fmt.Sprintf("Editando Materia Prima: %d", mp.IDMateriaPrima)),
+        widget.NewLabel(fmt.Sprintf("Editando Materia Prima: %d", m.IDMateriaPrima)),
         form,
     )
 }
 
-func BuildEliminarMateriaPrimaDialog(w fyne.Window) {
+func openEliminarMateriaPrimaDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de la materia prima a eliminar:"),
-            id,
-            widget.NewButton("Eliminar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err == nil {
-                    controllers.DeleteMateriaPrima(idInt)
-                }
-                w.SetContent(BuildMateriasPrimasUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Eliminar Materia Prima",
+        "Eliminar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID a eliminar", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            idVal, _ := strconv.Atoi(id.Text)
+
+            controllers.DeleteMateriaPrima(idVal)
+            w.SetContent(BuildMateriaPrimaUI(w))
+        },
+        w,
+    )
 }

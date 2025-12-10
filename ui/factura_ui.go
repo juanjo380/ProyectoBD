@@ -8,102 +8,107 @@ import (
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 )
 
-func BuildFacturasUI(w fyne.Window) fyne.CanvasObject {
+func BuildFacturaUI(w fyne.Window) fyne.CanvasObject {
 
     facturas, _ := controllers.GetAllFacturas()
 
-    data := [][]string{{"ID", "Estado", "Monto"}}
+    data := [][]string{{"ID Factura", "Estado", "Monto"}}
     for _, f := range facturas {
         data = append(data, []string{
-            f.IDFactura, f.Estado, fmt.Sprintf("%d", f.MontoTotal),
+            f.IDFactura,
+            f.Estado,
+            fmt.Sprintf("%d", f.MontoTotal),
         })
     }
 
     table := widget.NewTable(
         func() (int, int) { return len(data), 3 },
         func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(id widget.TableCellID, cell fyne.CanvasObject) {
-            cell.(*widget.Label).SetText(data[id.Row][id.Col])
+        func(id widget.TableCellID, obj fyne.CanvasObject) {
+            obj.(*widget.Label).SetText(data[id.Row][id.Col])
         },
     )
 
     btnAdd := widget.NewButton("Registrar Factura", func() {
-        w.SetContent(BuildCrearFacturaUI(w))
+        openCrearFacturaDialog(w)
     })
 
     btnEdit := widget.NewButton("Editar Factura", func() {
-        BuildEditarFacturaDialog(w)
+        openEditarFacturaIDDialog(w)
     })
 
     btnDelete := widget.NewButton("Eliminar Factura", func() {
-        BuildEliminarFacturaDialog(w)
+        openEliminarFacturaDialog(w)
     })
 
-    leftMenu := container.NewVBox(btnAdd, btnEdit, btnDelete)
+    menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
 
-    return container.NewBorder(leftMenu, nil, nil, nil, table)
+    return container.NewBorder(menu, nil, nil, nil, table)
 }
 
-func BuildCrearFacturaUI(w fyne.Window) fyne.CanvasObject {
+func openCrearFacturaDialog(w fyne.Window) {
 
     id := widget.NewEntry()
     estado := widget.NewEntry()
     monto := widget.NewEntry()
 
-    form := &widget.Form{
-        Items: []*widget.FormItem{
+    dialog.ShowForm("Registrar Factura",
+        "Guardar",
+        "Cancelar",
+        []*widget.FormItem{
             {Text: "ID Factura", Widget: id},
             {Text: "Estado", Widget: estado},
             {Text: "Monto Total", Widget: monto},
         },
-        OnSubmit: func() {
-            valor, _ := strconv.Atoi(monto.Text)
+        func(ok bool) {
+            if !ok {
+                return
+            }
+
+            montoVal, _ := strconv.Atoi(monto.Text)
 
             f := models.Factura{
                 IDFactura:  id.Text,
                 Estado:     estado.Text,
-                MontoTotal: valor,
+                MontoTotal: montoVal,
             }
 
             controllers.InsertFactura(f)
-            w.SetContent(BuildFacturasUI(w))
+            w.SetContent(BuildFacturaUI(w))
         },
-        OnCancel: func() {
-            w.SetContent(BuildFacturasUI(w))
-        },
-    }
-
-    return container.NewVBox(
-        widget.NewLabel("Registrar Factura"),
-        form,
+        w,
     )
 }
 
-func BuildEditarFacturaDialog(w fyne.Window) {
+func openEditarFacturaIDDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de la factura a editar:"),
-            id,
-            widget.NewButton("Continuar", func() {
-                factura, err := controllers.GetFacturaByID(id.Text)
-                if err != nil {
-                    id.SetText("No existe.")
-                    return
-                }
-                w.SetContent(BuildEditarFacturaUI(w, factura))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Editar Factura",
+        "Buscar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID de la factura", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            factura, err := controllers.GetFacturaByID(id.Text)
+            if err != nil {
+                dialog.ShowInformation("Error", "No existe una factura con ese ID", w)
+                return
+            }
+
+            w.SetContent(BuildEditarFacturaUI(w, factura))
+        },
+        w,
+    )
 }
 
 func BuildEditarFacturaUI(w fyne.Window, f *models.Factura) fyne.CanvasObject {
@@ -120,16 +125,17 @@ func BuildEditarFacturaUI(w fyne.Window, f *models.Factura) fyne.CanvasObject {
             {Text: "Monto Total", Widget: monto},
         },
         OnSubmit: func() {
-            valor, _ := strconv.Atoi(monto.Text)
+
+            montoVal, _ := strconv.Atoi(monto.Text)
 
             f.Estado = estado.Text
-            f.MontoTotal = valor
+            f.MontoTotal = montoVal
 
             controllers.UpdateFactura(*f)
-            w.SetContent(BuildFacturasUI(w))
+            w.SetContent(BuildFacturaUI(w))
         },
         OnCancel: func() {
-            w.SetContent(BuildFacturasUI(w))
+            w.SetContent(BuildFacturaUI(w))
         },
     }
 
@@ -139,22 +145,24 @@ func BuildEditarFacturaUI(w fyne.Window, f *models.Factura) fyne.CanvasObject {
     )
 }
 
-func BuildEliminarFacturaDialog(w fyne.Window) {
+func openEliminarFacturaDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de la factura a eliminar:"),
-            id,
-            widget.NewButton("Eliminar", func() {
-                controllers.DeleteFactura(id.Text)
-                w.SetContent(BuildFacturasUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", func() { popup.Hide() }),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Eliminar Factura",
+        "Eliminar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID de la factura", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            controllers.DeleteFactura(id.Text)
+            w.SetContent(BuildFacturaUI(w))
+        },
+        w,
+    )
 }

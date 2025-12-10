@@ -4,10 +4,10 @@ import (
     "ProyectoBD/controllers"
     "ProyectoBD/models"
     "fmt"
-    "strconv"
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 )
 
@@ -15,92 +15,97 @@ func BuildPedidosUI(w fyne.Window) fyne.CanvasObject {
 
     pedidos, _ := controllers.GetAllPedidos()
 
-    data := [][]string{{"ID", "Artículo", "Fecha Encargo", "Entrega", "Cliente", "Factura", "Abono"}}
+    data := [][]string{{"ID Pedido", "Artículo", "Anotaciones", "Fecha Encargo", "Fecha Entrega", "Abono", "Cliente", "Factura"}}
     for _, p := range pedidos {
-        entrega := "Pendiente"
+
+        fechaEntrega := ""
         if p.FechaEntrega != nil {
-            entrega = *p.FechaEntrega
+            fechaEntrega = *p.FechaEntrega
         }
 
         data = append(data, []string{
             p.IDPedido,
             p.Articulo,
+            p.Anotaciones,
             p.FechaEncargo,
-            entrega,
+            fechaEntrega,
+            fmt.Sprintf("%d", p.Abono),
             p.DocIDCliente,
             p.IDFactura,
-            fmt.Sprint(p.Abono),
         })
     }
 
     table := widget.NewTable(
-        func() (int, int) { return len(data), 7 },
+        func() (int, int) { return len(data), 8 },
         func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(id widget.TableCellID, cell fyne.CanvasObject) {
-            cell.(*widget.Label).SetText(data[id.Row][id.Col])
+        func(cell widget.TableCellID, obj fyne.CanvasObject) {
+            obj.(*widget.Label).SetText(data[cell.Row][cell.Col])
         },
     )
 
     btnAdd := widget.NewButton("Registrar Pedido", func() {
-        w.SetContent(BuildCrearPedidoUI(w))
+        openCrearPedidoDialog(w)
     })
 
     btnEdit := widget.NewButton("Editar Pedido", func() {
-        BuildEditarPedidoDialog(w)
+        openEditarPedidoIDDialog(w)
     })
 
     btnDelete := widget.NewButton("Eliminar Pedido", func() {
-        BuildEliminarPedidoDialog(w)
+        openEliminarPedidoDialog(w)
     })
 
-    btnEntregar := widget.NewButton("Marcar como Entregado", func() {
-        BuildMarcarEntregadoDialog(w)
-    })
-
-    menu := container.NewVBox(btnAdd, btnEdit, btnDelete, btnEntregar)
+    menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
 
     return container.NewBorder(menu, nil, nil, nil, table)
 }
 
-func BuildCrearPedidoUI(w fyne.Window) fyne.CanvasObject {
+func openCrearPedidoDialog(w fyne.Window) {
 
     id := widget.NewEntry()
     articulo := widget.NewEntry()
-    anotaciones := widget.NewMultiLineEntry()
-    fechaEnc := widget.NewEntry()
-    fechaEntrega := widget.NewEntry()
+    anot := widget.NewEntry()
+    fechaEncargo := widget.NewEntry()
+    fechaEntrega := widget.NewEntry() // puede ser vacío
     abono := widget.NewEntry()
     cliente := widget.NewEntry()
     factura := widget.NewEntry()
 
-    fechaEntrega.SetPlaceHolder("opcional")
-
-    form := &widget.Form{
-        Items: []*widget.FormItem{
+    dialog.ShowForm("Registrar Pedido",
+        "Guardar",
+        "Cancelar",
+        []*widget.FormItem{
             {Text: "ID Pedido", Widget: id},
             {Text: "Artículo", Widget: articulo},
-            {Text: "Anotaciones", Widget: anotaciones},
-            {Text: "Fecha Encargo", Widget: fechaEnc},
-            {Text: "Fecha Entrega", Widget: fechaEntrega},
+            {Text: "Anotaciones", Widget: anot},
+            {Text: "Fecha Encargo (YYYY-MM-DD)", Widget: fechaEncargo},
+            {Text: "Fecha Entrega (opcional)", Widget: fechaEntrega},
             {Text: "Abono", Widget: abono},
             {Text: "Documento Cliente", Widget: cliente},
             {Text: "ID Factura", Widget: factura},
         },
-        OnSubmit: func() {
-            abonoInt, _ := strconv.Atoi(abono.Text)
-
-            var fEntrega *string
-            if fechaEntrega.Text != "" {
-                fEntrega = &fechaEntrega.Text
+        func(ok bool) {
+            if !ok {
+                return
             }
+
+            // Fecha entrega como puntero
+            var fechaEntregaPtr *string
+            if fechaEntrega.Text != "" {
+                v := fechaEntrega.Text
+                fechaEntregaPtr = &v
+            }
+
+            abonoVal := 0
+            fmt.Sscan(abono.Text, &abonoVal)
 
             p := models.Pedido{
                 IDPedido:     id.Text,
                 Articulo:     articulo.Text,
-                Anotaciones:  anotaciones.Text,
-                FechaEncargo: fechaEnc.Text,
-                FechaEntrega: fEntrega,
-                Abono:        abonoInt,
+                Anotaciones:  anot.Text,
+                FechaEncargo: fechaEncargo.Text,
+                FechaEntrega: fechaEntregaPtr,
+                Abono:        abonoVal,
                 DocIDCliente: cliente.Text,
                 IDFactura:    factura.Text,
             }
@@ -108,39 +113,35 @@ func BuildCrearPedidoUI(w fyne.Window) fyne.CanvasObject {
             controllers.InsertPedido(p)
             w.SetContent(BuildPedidosUI(w))
         },
-        OnCancel: func() {
-            w.SetContent(BuildPedidosUI(w))
-        },
-    }
-
-    return container.NewVBox(
-        widget.NewLabel("Registrar Pedido"),
-        form,
+        w,
     )
 }
 
-func BuildEditarPedidoDialog(w fyne.Window) {
+func openEditarPedidoIDDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID del pedido a editar:"),
-            id,
-            widget.NewButton("Continuar", func() {
-                pedido, err := controllers.GetPedidoByID(id.Text)
-                if err != nil {
-                    id.SetText("No existe")
-                    return
-                }
-                w.SetContent(BuildEditarPedidoUI(w, pedido))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", popup.Hide),
-        ),
-        w.Canvas(),
-    )
+    dialog.ShowForm("Editar Pedido",
+        "Buscar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID Pedido", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
 
-    popup.Show()
+            pedido, err := controllers.GetPedidoByID(id.Text)
+            if err != nil {
+                dialog.ShowInformation("Error", "No existe un pedido con ese ID", w)
+                return
+            }
+
+            w.SetContent(BuildEditarPedidoUI(w, pedido))
+        },
+        w,
+    )
 }
 
 func BuildEditarPedidoUI(w fyne.Window, p *models.Pedido) fyne.CanvasObject {
@@ -148,7 +149,7 @@ func BuildEditarPedidoUI(w fyne.Window, p *models.Pedido) fyne.CanvasObject {
     articulo := widget.NewEntry()
     articulo.SetText(p.Articulo)
 
-    anot := widget.NewMultiLineEntry()
+    anot := widget.NewEntry()
     anot.SetText(p.Anotaciones)
 
     fechaEncargo := widget.NewEntry()
@@ -160,7 +161,7 @@ func BuildEditarPedidoUI(w fyne.Window, p *models.Pedido) fyne.CanvasObject {
     }
 
     abono := widget.NewEntry()
-    abono.SetText(fmt.Sprint(p.Abono))
+    abono.SetText(fmt.Sprintf("%d", p.Abono))
 
     cliente := widget.NewEntry()
     cliente.SetText(p.DocIDCliente)
@@ -179,20 +180,20 @@ func BuildEditarPedidoUI(w fyne.Window, p *models.Pedido) fyne.CanvasObject {
             {Text: "Factura", Widget: factura},
         },
         OnSubmit: func() {
-            abonoInt, _ := strconv.Atoi(abono.Text)
-
-            var fEntrega *string
-            if fechaEntrega.Text != "" {
-                fEntrega = &fechaEntrega.Text
-            } else {
-                fEntrega = nil
-            }
 
             p.Articulo = articulo.Text
             p.Anotaciones = anot.Text
             p.FechaEncargo = fechaEncargo.Text
-            p.FechaEntrega = fEntrega
-            p.Abono = abonoInt
+
+            // fecha entrega opcional
+            if fechaEntrega.Text == "" {
+                p.FechaEntrega = nil
+            } else {
+                v := fechaEntrega.Text
+                p.FechaEntrega = &v
+            }
+
+            fmt.Sscan(abono.Text, &p.Abono)
             p.DocIDCliente = cliente.Text
             p.IDFactura = factura.Text
 
@@ -210,46 +211,24 @@ func BuildEditarPedidoUI(w fyne.Window, p *models.Pedido) fyne.CanvasObject {
     )
 }
 
-func BuildEliminarPedidoDialog(w fyne.Window) {
+func openEliminarPedidoDialog(w fyne.Window) {
+
     id := widget.NewEntry()
 
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID del pedido a eliminar:"),
-            id,
-            widget.NewButton("Eliminar", func() {
-                controllers.DeletePedido(id.Text)
-                w.SetContent(BuildPedidosUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", popup.Hide),
-        ),
-        w.Canvas(),
+    dialog.ShowForm("Eliminar Pedido",
+        "Eliminar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID del Pedido", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
+
+            controllers.DeletePedido(id.Text)
+            w.SetContent(BuildPedidosUI(w))
+        },
+        w,
     )
-
-    popup.Show()
-}
-
-func BuildMarcarEntregadoDialog(w fyne.Window) {
-    id := widget.NewEntry()
-    fecha := widget.NewEntry()
-
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("Marcar Pedido como Entregado"),
-            widget.NewLabel("ID Pedido:"),
-            id,
-            widget.NewLabel("Fecha de Entrega (YYYY-MM-DD):"),
-            fecha,
-            widget.NewButton("Confirmar", func() {
-                controllers.MarcarPedidoEntregado(id.Text, fecha.Text)
-                w.SetContent(BuildPedidosUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", popup.Hide),
-        ),
-        w.Canvas(),
-    )
-
-    popup.Show()
 }

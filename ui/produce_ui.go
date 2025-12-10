@@ -8,40 +8,41 @@ import (
 
     "fyne.io/fyne/v2"
     "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
     "fyne.io/fyne/v2/widget"
 )
 
 func BuildProduceUI(w fyne.Window) fyne.CanvasObject {
 
-    records, _ := controllers.GetAllProduce()
+    produceList, _ := controllers.GetAllProduce()
 
     data := [][]string{{"ID Produce", "ID Materia Prima", "ID Producto T"}}
-    for _, r := range records {
+    for _, pr := range produceList {
         data = append(data, []string{
-            fmt.Sprint(r.IDProduce),
-            fmt.Sprint(r.IDMateriaPrima),
-            fmt.Sprint(r.IDProductoT),
+            fmt.Sprintf("%d", pr.IDProduce),
+            fmt.Sprintf("%d", pr.IDMateriaPrima),
+            fmt.Sprintf("%d", pr.IDProductoT),
         })
     }
 
     table := widget.NewTable(
         func() (int, int) { return len(data), 3 },
         func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(id widget.TableCellID, cell fyne.CanvasObject) {
-            cell.(*widget.Label).SetText(data[id.Row][id.Col])
+        func(c widget.TableCellID, obj fyne.CanvasObject) {
+            obj.(*widget.Label).SetText(data[c.Row][c.Col])
         },
     )
 
     btnAdd := widget.NewButton("Registrar Produce", func() {
-        w.SetContent(BuildCrearProduceUI(w))
+        openCrearProduceDialog(w)
     })
 
-    btnEdit := widget.NewButton("Editar", func() {
-        BuildEditarProduceDialog(w)
+    btnEdit := widget.NewButton("Editar Produce", func() {
+        openEditarProduceIDDialog(w)
     })
 
-    btnDelete := widget.NewButton("Eliminar", func() {
-        BuildEliminarProduceDialog(w)
+    btnDelete := widget.NewButton("Eliminar Produce", func() {
+        openEliminarProduceDialog(w)
     })
 
     menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
@@ -49,127 +50,126 @@ func BuildProduceUI(w fyne.Window) fyne.CanvasObject {
     return container.NewBorder(menu, nil, nil, nil, table)
 }
 
-func BuildCrearProduceUI(w fyne.Window) fyne.CanvasObject {
+func openCrearProduceDialog(w fyne.Window) {
 
-    id := widget.NewEntry()
+    idProduce := widget.NewEntry()
     idMat := widget.NewEntry()
     idProd := widget.NewEntry()
 
+    dialog.ShowForm("Registrar Relación Produce",
+        "Guardar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID Produce", Widget: idProduce},
+            {Text: "ID Materia Prima", Widget: idMat},
+            {Text: "ID Producto Terminado", Widget: idProd},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
+
+            idProduceVal, _ := strconv.Atoi(idProduce.Text)
+            idMatVal, _ := strconv.Atoi(idMat.Text)
+            idProdVal, _ := strconv.Atoi(idProd.Text)
+
+            pr := models.Produce{
+                IDProduce:      idProduceVal,
+                IDMateriaPrima: idMatVal,
+                IDProductoT:    idProdVal,
+            }
+
+            controllers.InsertProduce(pr)
+            w.SetContent(BuildProduceUI(w))
+        },
+        w,
+    )
+}
+
+func openEditarProduceIDDialog(w fyne.Window) {
+
+    id := widget.NewEntry()
+
+    dialog.ShowForm("Editar Produce",
+        "Buscar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID Produce", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
+            }
+
+            idVal, _ := strconv.Atoi(id.Text)
+
+            prod, err := controllers.GetProduceByID(idVal)
+            if err != nil {
+                dialog.ShowInformation("Error", "No existe un registro con ese ID", w)
+                return
+            }
+
+            w.SetContent(BuildEditarProduceUI(w, prod))
+        },
+        w,
+    )
+}
+
+func BuildEditarProduceUI(w fyne.Window, pr *models.Produce) fyne.CanvasObject {
+
+    idMat := widget.NewEntry()
+    idMat.SetText(fmt.Sprintf("%d", pr.IDMateriaPrima))
+
+    idProd := widget.NewEntry()
+    idProd.SetText(fmt.Sprintf("%d", pr.IDProductoT))
+
     form := &widget.Form{
         Items: []*widget.FormItem{
-            {Text: "ID Produce", Widget: id},
             {Text: "ID Materia Prima", Widget: idMat},
             {Text: "ID Producto Terminado", Widget: idProd},
         },
         OnSubmit: func() {
-            idInt, _ := strconv.Atoi(id.Text)
-            matInt, _ := strconv.Atoi(idMat.Text)
-            prodInt, _ := strconv.Atoi(idProd.Text)
 
-            record := models.Produce{
-                IDProduce:      idInt,
-                IDMateriaPrima: matInt,
-                IDProductoT:    prodInt,
+            matVal, _ := strconv.Atoi(idMat.Text)
+            prodVal, _ := strconv.Atoi(idProd.Text)
+
+            pr.IDMateriaPrima = matVal
+            pr.IDProductoT = prodVal
+
+            controllers.UpdateProduce(*pr)
+            w.SetContent(BuildProduceUI(w))
+        },
+        OnCancel: func() {
+            w.SetContent(BuildProduceUI(w))
+        },
+    }
+
+    return container.NewVBox(
+        widget.NewLabel(fmt.Sprintf("Editando Produce ID: %d", pr.IDProduce)),
+        form,
+    )
+}
+
+func openEliminarProduceDialog(w fyne.Window) {
+
+    id := widget.NewEntry()
+
+    dialog.ShowForm("Eliminar Produce",
+        "Eliminar",
+        "Cancelar",
+        []*widget.FormItem{
+            {Text: "ID Produce", Widget: id},
+        },
+        func(ok bool) {
+            if !ok {
+                return
             }
 
-            controllers.InsertProduce(record)
+            idVal, _ := strconv.Atoi(id.Text)
+
+            controllers.DeleteProduce(idVal)
             w.SetContent(BuildProduceUI(w))
         },
-        OnCancel: func() {
-            w.SetContent(BuildProduceUI(w))
-        },
-    }
-
-    return container.NewVBox(
-        widget.NewLabel("Registrar Produce"),
-        form,
+        w,
     )
-}
-
-func BuildEditarProduceDialog(w fyne.Window) {
-    id := widget.NewEntry()
-
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de Produce a editar:"),
-            id,
-            widget.NewButton("Continuar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err != nil {
-                    id.SetText("ID inválido")
-                    return
-                }
-
-                record, err := controllers.GetProduceByID(idInt)
-                if err != nil {
-                    id.SetText("No existe")
-                    return
-                }
-
-                w.SetContent(BuildEditarProduceUI(w, record))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", popup.Hide),
-        ),
-        w.Canvas(),
-    )
-
-    popup.Show()
-}
-
-func BuildEditarProduceUI(w fyne.Window, p *models.Produce) fyne.CanvasObject {
-
-    idMat := widget.NewEntry()
-    idMat.SetText(fmt.Sprint(p.IDMateriaPrima))
-
-    idProd := widget.NewEntry()
-    idProd.SetText(fmt.Sprint(p.IDProductoT))
-
-    form := &widget.Form{
-        Items: []*widget.FormItem{
-            {Text: "ID Materia Prima", Widget: idMat},
-            {Text: "ID Producto T", Widget: idProd},
-        },
-        OnSubmit: func() {
-            matInt, _ := strconv.Atoi(idMat.Text)
-            prodInt, _ := strconv.Atoi(idProd.Text)
-
-            p.IDMateriaPrima = matInt
-            p.IDProductoT = prodInt
-
-            controllers.UpdateProduce(*p)
-            w.SetContent(BuildProduceUI(w))
-        },
-        OnCancel: func() {
-            w.SetContent(BuildProduceUI(w))
-        },
-    }
-
-    return container.NewVBox(
-        widget.NewLabel(fmt.Sprintf("Editando Produce ID: %d", p.IDProduce)),
-        form,
-    )
-}
-
-func BuildEliminarProduceDialog(w fyne.Window) {
-    id := widget.NewEntry()
-
-    popup := widget.NewModalPopUp(
-        container.NewVBox(
-            widget.NewLabel("ID de Produce a eliminar:"),
-            id,
-            widget.NewButton("Eliminar", func() {
-                idInt, err := strconv.Atoi(id.Text)
-                if err == nil {
-                    controllers.DeleteProduce(idInt)
-                }
-                w.SetContent(BuildProduceUI(w))
-                popup.Hide()
-            }),
-            widget.NewButton("Cancelar", popup.Hide),
-        ),
-        w.Canvas(),
-    )
-
-    popup.Show()
 }
