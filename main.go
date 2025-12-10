@@ -1,39 +1,26 @@
 package main
 
 import (
-	"fmt"
-	"log"
-
-	"ProyectoBD/db"
+	"ProyectoBD/ui"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 )
 
 func main() {
+
+	// Crear la app
 	a := app.New()
-	w := a.NewWindow("Conexión a PostgreSQL")
 
-	statusLabel := widget.NewLabel("Verificando conexión...")
+	// Crear la ventana principal
+	w := a.NewWindow("Sistema de Confecciones – Login")
 
-	// Llamamos correctamente a la función que devuelve (db, error)
-	conn, err := db.Connect()
+	// Mostramos primero la pantalla de login
+	w.SetContent(ui.BuildLoginUI(w))
 
-	if err != nil {
-		log.Println("Error:", err)
-		statusLabel.SetText(fmt.Sprintf("Error al conectar:\n%v", err))
-	} else {
-		defer conn.Close() // usamos conn.Close(), no db.CloseDB()
-		statusLabel.SetText("Conexión exitosa a PostgreSQL")
-	}
+	// Tamaño inicial
+	w.Resize(fyne.NewSize(500, 300))
 
-	w.SetContent(container.NewVBox(
-		widget.NewLabel("Estado de la conexión:"),
-		statusLabel,
-	))
-
-	w.Resize(fyne.NewSize(400, 200))
+	// Ejecutar
 	w.ShowAndRun()
 }
