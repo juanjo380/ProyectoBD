@@ -38,6 +38,6 @@ func Connect() (*sql.DB, error) {
 		return nil, fmt.Errorf("error al conectar con la base de datos: %v", err)
 	}
 
-	log.Println("✅ Conexión exitosa a la base de datos.")
+	log.Println("Conexión exitosa a la base de datos.")
 	return db, nil
 }

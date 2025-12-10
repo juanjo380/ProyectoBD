@@ -1,7 +1,7 @@
 package models
 
 type Colegio struct {
-    IDColegio int
+    IDColegio string
     Nombre    string
     Telefono  string
     Direccion string

@@ -22,11 +22,11 @@ func main() {
 	conn, err := db.Connect()
 
 	if err != nil {
-		log.Println("❌ Error:", err)
-		statusLabel.SetText(fmt.Sprintf("❌ Error al conectar:\n%v", err))
+		log.Println("Error:", err)
+		statusLabel.SetText(fmt.Sprintf("Error al conectar:\n%v", err))
 	} else {
 		defer conn.Close() // usamos conn.Close(), no db.CloseDB()
-		statusLabel.SetText("✅ Conexión exitosa a PostgreSQL")
+		statusLabel.SetText("Conexión exitosa a PostgreSQL")
 	}
 
 	w.SetContent(container.NewVBox(
