@@ -47,10 +47,15 @@ func BuildUsuarioUI(w fyne.Window) fyne.CanvasObject {
 		openUsuarioDeleteDialog(w)
 	})
 
+	//boton salir
+	btnSalir := widget.NewButton("Salir", func() {
+		w.SetContent(BuildDashboardUI(w, nil))
+	})
+
 	// Solo admin puede crear/editar usuarios
 	// Aquí podrías agregar lógica para verificar rol
 
-	menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
+	menu := container.NewVBox(btnAdd, btnEdit, btnDelete, btnSalir)
 
 	return container.NewBorder(menu, nil, nil, nil, table)
 }

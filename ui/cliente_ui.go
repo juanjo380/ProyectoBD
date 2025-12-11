@@ -8,50 +8,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
-
-/*
-
-func BuildClienteUI(w fyne.Window) fyne.CanvasObject {
-
-    clientes, _ := controllers.GetAllClientes()
-
-    data := [][]string{{"Documento", "Nombre", "Teléfono"}}
-    for _, c := range clientes {
-        data = append(data, []string{
-            c.DocID,
-            c.Nombre,
-            c.Telefono,
-        })
-    }
-
-    table := widget.NewTable(
-        func() (int, int) { return len(data), 3 },
-        func() fyne.CanvasObject { return widget.NewLabel("") },
-        func(cell widget.TableCellID, obj fyne.CanvasObject) {
-            obj.(*widget.Label).SetText(data[cell.Row][cell.Col])
-        },
-    )
-
-    btnAdd := widget.NewButton("Registrar Cliente", func() {
-        w.SetContent(BuildCrearClienteUI(w))
-    })
-
-    btnEdit := widget.NewButton("Editar Cliente", func() {
-        openClienteEditDialog(w)
-    })
-
-    btnDelete := widget.NewButton("Eliminar Cliente", func() {
-        openClienteDeleteDialog(w)
-    })
-
-    menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
-
-    return container.NewBorder(menu, nil, nil, nil, table)
-}
-*/
 
 func BuildClienteUI(w fyne.Window) fyne.CanvasObject {
 
@@ -74,24 +32,25 @@ func BuildClienteUI(w fyne.Window) fyne.CanvasObject {
 		},
 	)
 
-	// Botones de acción
-	btnAdd := widget.NewButtonWithIcon("Registrar Cliente", theme.ContentAddIcon(), func() {
+	btnAdd := widget.NewButton("Registrar Cliente", func() {
 		w.SetContent(BuildCrearClienteUI(w))
 	})
 
-	btnEdit := widget.NewButtonWithIcon("Editar Cliente", theme.DocumentIcon(), func() {
+	btnEdit := widget.NewButton("Editar Cliente", func() {
 		openClienteEditDialog(w)
 	})
 
-	btnDelete := widget.NewButtonWithIcon("Eliminar Cliente", theme.DeleteIcon(), func() {
+	btnDelete := widget.NewButton("Eliminar Cliente", func() {
 		openClienteDeleteDialog(w)
 	})
 
-	// Contenedor compacto para los botones
-	acciones := container.NewHBox(btnAdd, btnEdit, btnDelete)
+	btnSalir := widget.NewButton("Salir", func() {
+		w.SetContent(BuildDashboardUI(w, nil))
+	})
 
-	// Contenedor principal
-	return container.NewBorder(acciones, nil, nil, nil, table)
+	menu := container.NewVBox(btnAdd, btnEdit, btnDelete, btnSalir)
+
+	return container.NewBorder(menu, nil, nil, nil, table)
 }
 
 func BuildCrearClienteUI(w fyne.Window) fyne.CanvasObject {

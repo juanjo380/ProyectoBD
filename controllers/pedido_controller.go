@@ -149,3 +149,64 @@ func MarcarPedidoEntregado(id string, fecha string) error {
 
 	return err
 }
+
+// Obtener pedidos pendientes
+func GetPedidosPendientes() ([]map[string]interface{}, error) {
+	conn, err := db.Connect()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	rows, err := conn.Query(`
+        SELECT 
+            p.id_pedido,
+            c.nombre as cliente,
+            pt.descripcion as producto,
+            p.fecha_encargo,
+            p.fecha_entrega,
+            p.abono,
+            p.estado
+        FROM pedidos p
+        JOIN cliente c ON p.doc_id_cliente = c.docid
+        JOIN posee po ON p.id_pedido = po.id_pedido
+        JOIN producto_terminado pt ON po.id_producto_t = pt.id_producto_t
+        WHERE p.estado = 'Pendiente'
+        ORDER BY p.fecha_encargo
+    `)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var resultados []map[string]interface{}
+
+	for rows.Next() {
+		var idPedido, cliente, producto, fechaEncargo string
+		var fechaEntrega sql.NullString
+		var abono int
+		var estado string
+
+		err := rows.Scan(&idPedido, &cliente, &producto, &fechaEncargo, &fechaEntrega, &abono, &estado)
+		if err != nil {
+			return nil, err
+		}
+
+		fechaEntregaStr := ""
+		if fechaEntrega.Valid {
+			fechaEntregaStr = fechaEntrega.String
+		}
+
+		resultados = append(resultados, map[string]interface{}{
+			"id_pedido":     idPedido,
+			"cliente":       cliente,
+			"producto":      producto,
+			"fecha_encargo": fechaEncargo,
+			"fecha_entrega": fechaEntregaStr,
+			"abono":         abono,
+			"estado":        estado,
+		})
+	}
+
+	return resultados, nil
+}
