@@ -3,6 +3,7 @@ package ui
 import (
 	"ProyectoBD/controllers"
 	"image/color"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -70,35 +71,74 @@ func BuildLoginUI(w fyne.Window) fyne.CanvasObject {
 	usuario := widget.NewEntry()
 	pass := widget.NewPasswordEntry()
 
+	// Acción común de login: valida campos, llama al controlador y navega al dashboard
+	loginAction := func() {
+		uText := strings.TrimSpace(usuario.Text)
+		pText := pass.Text
+
+		if uText == "" || pText == "" {
+			dialog.ShowInformation("Campos incompletos", "Por favor ingresa usuario y contraseña.", w)
+			return
+		}
+
+		user, err := controllers.VerificarCredenciales(uText, pText)
+		if err != nil {
+			dialog.ShowInformation("Error de autenticación", err.Error(), w)
+			pass.SetText("")
+			return
+		}
+
+		// Credenciales válidas: abrir dashboard con el usuario autenticado
+		w.SetContent(BuildDashboardUI(w, user))
+	}
+
 	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "Usuario", Widget: usuario},
 			{Text: "Contraseña", Widget: pass},
 		},
-		OnSubmit: func() {
-			// Verificar credenciales
-			_, err := controllers.VerificarCredenciales(usuario.Text, pass.Text)
-			if err != nil {
-				dialog.ShowInformation("Error", "Usuario o contraseña incorrectos", w)
-				return
-			}
-
-			// Si las credenciales son correctas, pasar al dashboard
-			w.SetContent(BuildDashboardUI(w, nil))
-		},
+		OnSubmit: loginAction,
 	}
+
+	btnSubmit := widget.NewButtonWithIcon("Iniciar Sesión", theme.LoginIcon(), loginAction)
+	btnSubmit.Importance = widget.HighImportance
 
 	btnSalir := widget.NewButtonWithIcon("Salir", theme.CancelIcon(), func() {
 		w.Close() // Cierra la ventana actual
 	})
 
-	return container.NewVBox(
-		widget.NewLabelWithStyle("Iniciar Sesión",
-			fyne.TextAlignCenter,
-			fyne.TextStyle{Bold: true},
-		),
-		form,
-		btnSalir,
+	// Contenedor del 'card' de login con tamaño proporcional a la ventana
+	title := canvas.NewText("Iniciar Sesión", color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+	title.TextSize = 24
+	title.TextStyle = fyne.TextStyle{Bold: true}
+	title.Alignment = fyne.TextAlignCenter
+
+	// Determinar tamaño proporcional (fallback si canvas no está listo aún)
+	canvasSize := w.Canvas().Size()
+	if canvasSize.Width == 0 || canvasSize.Height == 0 {
+		canvasSize = fyne.NewSize(600, 400)
+	}
+	cardW := int(canvasSize.Width * 0.45)
+	cardH := int(canvasSize.Height * 0.5)
+
+	// Construir un "card" manual usando un rectángulo oscuro con tamaño mínimo
+	bgCard := canvas.NewRectangle(color.NRGBA{R: 30, G: 30, B: 35, A: 255})
+	bgCard.SetMinSize(fyne.NewSize(float32(cardW), float32(cardH)))
+
+	cardInner := container.NewVBox(
+		container.NewCenter(title),
+		container.NewPadded(form),
+		container.NewHBox(btnSubmit, btnSalir),
+	)
+
+	cardWrap := container.NewMax(bgCard, container.NewPadded(cardInner))
+
+	// Fondo oscuro para centrar mejor el card
+	bg := canvas.NewRectangle(color.NRGBA{R: 20, G: 20, B: 25, A: 255})
+
+	return container.NewMax(
+		bg,
+		container.NewCenter(cardWrap),
 	)
 
 }

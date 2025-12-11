@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ProyectoBD/controllers"
 	"ProyectoBD/db"
 	"ProyectoBD/ui"
 
@@ -11,6 +12,9 @@ import (
 func main() {
 	// Inicializar la base de datos
 	db.Init()
+
+	// Asegurar superadmin por defecto
+	_ = controllers.EnsureDefaultSuperAdmin()
 
 	// Crear la app
 	a := app.New()

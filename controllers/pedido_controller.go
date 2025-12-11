@@ -150,7 +150,7 @@ func MarcarPedidoEntregado(id string, fecha string) error {
 	return err
 }
 
-// Obtener pedidos pendientes
+// Obtener pedidos pendientes (fecha_entrega IS NULL)
 func GetPedidosPendientes() ([]map[string]interface{}, error) {
 	conn, err := db.Connect()
 	if err != nil {
@@ -159,21 +159,20 @@ func GetPedidosPendientes() ([]map[string]interface{}, error) {
 	defer conn.Close()
 
 	rows, err := conn.Query(`
-        SELECT 
-            p.id_pedido,
-            c.nombre as cliente,
-            pt.descripcion as producto,
-            p.fecha_encargo,
-            p.fecha_entrega,
-            p.abono,
-            p.estado
-        FROM pedidos p
-        JOIN cliente c ON p.doc_id_cliente = c.docid
-        JOIN posee po ON p.id_pedido = po.id_pedido
-        JOIN producto_terminado pt ON po.id_producto_t = pt.id_producto_t
-        WHERE p.estado = 'Pendiente'
-        ORDER BY p.fecha_encargo
-    `)
+		SELECT 
+			p.id_pedido,
+			c.nombre AS cliente,
+			pt.descripcion AS producto,
+			p.fecha_encargo,
+			p.fecha_entrega,
+			p.abono
+		FROM pedidos p
+		JOIN cliente c ON p.doc_id_cliente = c.docid
+		JOIN posee po ON p.id_pedido = po.id_pedido
+		JOIN producto_terminado pt ON po.id_producto_t = pt.id_producto_t
+		WHERE p.fecha_entrega IS NULL
+		ORDER BY p.fecha_encargo
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -185,9 +184,8 @@ func GetPedidosPendientes() ([]map[string]interface{}, error) {
 		var idPedido, cliente, producto, fechaEncargo string
 		var fechaEntrega sql.NullString
 		var abono int
-		var estado string
 
-		err := rows.Scan(&idPedido, &cliente, &producto, &fechaEncargo, &fechaEntrega, &abono, &estado)
+		err := rows.Scan(&idPedido, &cliente, &producto, &fechaEncargo, &fechaEntrega, &abono)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +202,7 @@ func GetPedidosPendientes() ([]map[string]interface{}, error) {
 			"fecha_encargo": fechaEncargo,
 			"fecha_entrega": fechaEntregaStr,
 			"abono":         abono,
-			"estado":        estado,
+			"estado":        "Pendiente",
 		})
 	}
 
