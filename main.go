@@ -21,8 +21,6 @@ func main() {
 	w.SetContent(ui.BuildWelcomeUI(w))
 	// Mostrar pantalla de login
 
-	//w.SetContent(ui.BuildLoginUI(w))
-
 	// Tamaño inicial
 	w.Resize(fyne.NewSize(600, 400))
 

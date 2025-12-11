@@ -185,6 +185,41 @@ func GetUsuarioByUsername(username string) (*models.Usuario, error) {
 }
 
 // Verificar credenciales de usuario
+
+/*
+func VerificarCredenciales(username, password string) (*models.Usuario, error) {
+	conn, err := db.Connect()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	var u models.Usuario
+	var dbPassword string
+
+	err = conn.QueryRow(`
+        SELECT idUsuario, username, password, rol, nombreCompleto
+        FROM Usuario
+        WHERE username = $1`,
+		username,
+	).Scan(&u.IDUsuario, &u.Username, &dbPassword, &u.Rol, &u.NombreCompleto)
+
+	if err != nil {
+		return nil, fmt.Errorf("usuario no encontrado")
+	}
+
+	// Verificar contraseña
+	err = bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(password))
+	if err != nil {
+		return nil, fmt.Errorf("contraseña incorrecta")
+	}
+
+	return &u, nil
+}
+
+*/
+
+// Esta función DEBE existir en tu archivo
 func VerificarCredenciales(username, password string) (*models.Usuario, error) {
 	conn, err := db.Connect()
 	if err != nil {
@@ -206,7 +241,7 @@ func VerificarCredenciales(username, password string) (*models.Usuario, error) {
 		return nil, fmt.Errorf("usuario no encontrado")
 	}
 
-	// Verificar contraseña
+	// Verificar contraseña con bcrypt
 	err = bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(password))
 	if err != nil {
 		return nil, fmt.Errorf("contraseña incorrecta")
