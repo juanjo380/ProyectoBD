@@ -31,12 +31,24 @@ func BuildWelcomeUI(w fyne.Window) fyne.CanvasObject {
 	linea.StrokeWidth = 3
 
 	// Botón de login (estilo moderno)
+
 	btnLogin := widget.NewButtonWithIcon("Iniciar Sesión", theme.LoginIcon(), func() {
 		w.SetContent(BuildLoginUI(w))
-		w.Resize(fyne.NewSize(500, 400))
+		w.Resize(fyne.NewSize(700, 600))
 	})
 	btnLogin.Importance = widget.HighImportance
 	btnLogin.Resize(fyne.NewSize(200, 50))
+
+	// Botón de salir
+	btnSalir := widget.NewButtonWithIcon("Salir", theme.CancelIcon(), func() {
+		dialog.ShowConfirm("Salir", "¿Estás seguro de que deseas salir?", func(confirmar bool) {
+			if confirmar {
+				w.Close()
+			}
+		}, w)
+	})
+	btnSalir.Importance = widget.MediumImportance
+	btnSalir.Resize(fyne.NewSize(200, 50))
 
 	// Contenedor del contenido
 	contenido := container.NewVBox(
@@ -44,6 +56,7 @@ func BuildWelcomeUI(w fyne.Window) fyne.CanvasObject {
 		container.NewCenter(subtitulo),
 		container.NewCenter(linea),
 		container.NewCenter(btnLogin),
+		container.NewCenter(btnSalir),
 	)
 
 	// Layout final con fondo
@@ -71,9 +84,13 @@ func BuildLoginUI(w fyne.Window) fyne.CanvasObject {
 			}
 
 			// Si las credenciales son correctas, pasar al dashboard
-			w.SetContent(BuildDashboardUI(w))
+			w.SetContent(BuildDashboardUI(w, nil))
 		},
 	}
+
+	btnSalir := widget.NewButtonWithIcon("Salir", theme.CancelIcon(), func() {
+		w.Close() // Cierra la ventana actual
+	})
 
 	return container.NewVBox(
 		widget.NewLabelWithStyle("Iniciar Sesión",
@@ -81,41 +98,7 @@ func BuildLoginUI(w fyne.Window) fyne.CanvasObject {
 			fyne.TextStyle{Bold: true},
 		),
 		form,
+		btnSalir,
 	)
+
 }
-
-/*
-
-// Pantalla de inicio de sesión
-func BuildLoginUI(w fyne.Window) fyne.CanvasObject {
-
-	usuario := widget.NewEntry()
-	pass := widget.NewPasswordEntry()
-
-	form := &widget.Form{
-		Items: []*widget.FormItem{
-			{Text: "Usuario", Widget: usuario},
-			{Text: "Contraseña", Widget: pass},
-		},
-		OnSubmit: func() {
-
-			// Aquí defines el login, hardcodeado
-			if usuario.Text == "admin" && pass.Text == "1234" {
-
-				// Si todo está ok → pasar al dashboard
-				w.SetContent(BuildDashboardUI(w))
-				return
-			}
-
-			dialog.ShowInformation("Error", "Usuario o contraseña incorrectos", w)
-		},
-	}
-
-	return container.NewVBox(
-		widget.NewLabelWithStyle("Iniciar Sesión",
-			fyne.TextAlignCenter,
-			fyne.TextStyle{Bold: true},
-		),
-		form,
-	)
-}*/

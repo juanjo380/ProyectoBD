@@ -46,7 +46,12 @@ func BuildColegioUI(w fyne.Window) fyne.CanvasObject {
 		openEliminarColegioDialog(w)
 	})
 
-	menu := container.NewVBox(btnAdd, btnEdit, btnDelete)
+	//boton de salir
+	btnSalir := widget.NewButton("Salir", func() {
+		w.SetContent(BuildDashboardUI(w, nil))
+	})
+
+	menu := container.NewVBox(btnAdd, btnEdit, btnDelete, btnSalir)
 
 	return container.NewBorder(menu, nil, nil, nil, table)
 }
