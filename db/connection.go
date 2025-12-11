@@ -9,6 +9,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var DB *sql.DB
+
+func Init() {
+	var err error
+	DB, err = Connect()
+	if err != nil {
+		log.Fatal("No se pudo conectar a la base de datos:", err)
+	}
+}
+
 func Connect() (*sql.DB, error) {
 	host := "localhost"
 	port := 5432
