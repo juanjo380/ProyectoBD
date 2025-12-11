@@ -277,3 +277,32 @@ func CambiarPassword(id int, nuevaPassword string) error {
 
 	return err
 }
+
+// Crear un usuario superadmin por defecto si no existe
+func EnsureDefaultSuperAdmin() error {
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	var count int
+	err = conn.QueryRow(`SELECT COUNT(*) FROM Usuario WHERE username = $1`, "superadmin").Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(`
+		INSERT INTO Usuario (username, password, rol, nombreCompleto)
+		VALUES ($1, $2, $3, $4)
+	`, "superadmin", string(hashed), "administrador", "Super Admin")
+	return err
+}
