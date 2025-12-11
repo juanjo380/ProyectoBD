@@ -4,7 +4,7 @@ go 1.25.4
 
 require github.com/lib/pq v1.10.9
 
-require golang.org/x/crypto v0.46.0 // indirect
+require golang.org/x/crypto v0.46.0
 
 require (
 	fyne.io/fyne/v2 v2.7.1
