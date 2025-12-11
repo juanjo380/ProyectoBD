@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"ProyectoBD/controllers"
 	"image/color"
 
 	"fyne.io/fyne/v2"
@@ -52,6 +53,39 @@ func BuildWelcomeUI(w fyne.Window) fyne.CanvasObject {
 	)
 }
 
+func BuildLoginUI(w fyne.Window) fyne.CanvasObject {
+	usuario := widget.NewEntry()
+	pass := widget.NewPasswordEntry()
+
+	form := &widget.Form{
+		Items: []*widget.FormItem{
+			{Text: "Usuario", Widget: usuario},
+			{Text: "Contraseña", Widget: pass},
+		},
+		OnSubmit: func() {
+			// Verificar credenciales
+			_, err := controllers.VerificarCredenciales(usuario.Text, pass.Text)
+			if err != nil {
+				dialog.ShowInformation("Error", "Usuario o contraseña incorrectos", w)
+				return
+			}
+
+			// Si las credenciales son correctas, pasar al dashboard
+			w.SetContent(BuildDashboardUI(w))
+		},
+	}
+
+	return container.NewVBox(
+		widget.NewLabelWithStyle("Iniciar Sesión",
+			fyne.TextAlignCenter,
+			fyne.TextStyle{Bold: true},
+		),
+		form,
+	)
+}
+
+/*
+
 // Pantalla de inicio de sesión
 func BuildLoginUI(w fyne.Window) fyne.CanvasObject {
 
@@ -84,4 +118,4 @@ func BuildLoginUI(w fyne.Window) fyne.CanvasObject {
 		),
 		form,
 	)
-}
+}*/
