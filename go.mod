@@ -4,6 +4,8 @@ go 1.25.4
 
 require github.com/lib/pq v1.10.9
 
+require golang.org/x/crypto v0.46.0 // indirect
+
 require (
 	fyne.io/fyne/v2 v2.7.1
 	fyne.io/systray v1.11.1-0.20250603113521-ca66a66d8b58 // indirect
@@ -34,8 +36,8 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/yuin/goldmark v1.7.8 // indirect
 	golang.org/x/image v0.33.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

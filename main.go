@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ProyectoBD/db"
 	"ProyectoBD/ui"
 
 	"fyne.io/fyne/v2"
@@ -8,6 +9,8 @@ import (
 )
 
 func main() {
+	// Inicializar la base de datos
+	db.Init()
 
 	// Crear la app
 	a := app.New()
@@ -15,11 +18,13 @@ func main() {
 	// Crear la ventana principal
 	w := a.NewWindow("Sistema de Confecciones – Login")
 
-	// Mostramos primero la pantalla de login
-	w.SetContent(ui.BuildLoginUI(w))
+	w.SetContent(ui.BuildWelcomeUI(w))
+	// Mostrar pantalla de login
+
+	//w.SetContent(ui.BuildLoginUI(w))
 
 	// Tamaño inicial
-	w.Resize(fyne.NewSize(500, 300))
+	w.Resize(fyne.NewSize(600, 400))
 
 	// Ejecutar
 	w.ShowAndRun()
